@@ -13,10 +13,10 @@ firebase.initializeApp(firebaseConfig);
 
 var database = firebase.database();
 
-var currentTime = moment();
-console.log(currentTime._d);
+var currentTime = moment().format("dddd, MMMM Do YYYY, h:mm:ss a");
 
-$('#current-time').text(currentTime._d);
+
+$('#current-time').append(currentTime);
 
 $("#submit-train").on("click", function(e) {
     e.preventDefault();
@@ -25,11 +25,6 @@ $("#submit-train").on("click", function(e) {
     var dest = $('#destination-input').val().trim();
     var time = $('#time-input').val().trim();
     var freq = $('#frequency-input').val().trim();
-
-    console.log(name);
-    console.log(dest);
-    console.log(time);
-    console.log(freq);
 
     database.ref().push({
         name: name,
@@ -43,12 +38,23 @@ $("#submit-train").on("click", function(e) {
 });
 
 database.ref().orderByChild('dateAdded').on("child_added", function(snapshot) {
+    // How many minutes till next train.
+    var firstTime = snapshot.val().firstTime;
+    var firstTimeConverted = moment(firstTime, "HH:mm").subtract(1, "years");
+    var diffTime = moment().diff(moment(firstTimeConverted), "minutes");
+    var tRemainder = diffTime % (snapshot.val().frequency);
+    var tMinutesLeft = (snapshot.val().frequency) - tRemainder;
+
+    //Get next arrival time.
+    var arrival = moment().add(tMinutesLeft, "minutes").format('hh:mm a');
+
+    //Display table to DOM.
     var tr = $('<tr>');
     var trainName = $('<td>').text(snapshot.val().name);
     var destination = $('<td>').text(snapshot.val().destination);
     var frequency = $('<td>').text(snapshot.val().frequency);
-    var nextArrival = $('<td>').text(moment()._d);
-    var minutesAway = $('<td>').text('???');
+    var nextArrival = $('<td>').text(arrival);
+    var minutesAway = $('<td>').text(tMinutesLeft);
     tr.append(trainName, destination, frequency, nextArrival, minutesAway);
     $('#manage-data').append(tr);
 });
